@@ -2,7 +2,11 @@ import heroBanner from "@/assets/hero-banner.jpg";
 import casinoBanner from "@/assets/casino-banner.jpg";
 import TopMatches from "@/components/TopMatches";
 
-const HomePage = () => {
+interface HomePageProps {
+  onMatchClick?: (matchId: string) => void;
+}
+
+const HomePage = ({ onMatchClick }: HomePageProps) => {
   return (
     <div className="space-y-4 pb-4">
       {/* Deposit / Withdraw */}
@@ -48,7 +52,7 @@ const HomePage = () => {
       </div>
 
       {/* Top Matches */}
-      <TopMatches />
+      <TopMatches onMatchClick={onMatchClick} />
 
       {/* Cricket Battle Banner */}
       <div className="px-3">
@@ -60,6 +64,22 @@ const HomePage = () => {
             <span className="text-2xl font-black text-foreground drop-shadow-lg tracking-wider">CRICKET BATTLE</span>
           </div>
         </div>
+      </div>
+
+      {/* Mini Games Floating */}
+      <div className="fixed bottom-20 left-3 z-40">
+        <div className="w-14 h-14 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
+          <span className="text-2xl">🎲</span>
+        </div>
+        <span className="text-[8px] text-primary font-bold text-center block mt-0.5">MINI GAMES</span>
+      </div>
+
+      {/* Customer Support Floating */}
+      <div className="fixed bottom-20 right-3 z-40">
+        <div className="w-14 h-14 rounded-full bg-success/20 border-2 border-success flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
+          <span className="text-lg">📞</span>
+        </div>
+        <span className="text-[8px] text-success font-bold text-center block mt-0.5">24/7</span>
       </div>
     </div>
   );
