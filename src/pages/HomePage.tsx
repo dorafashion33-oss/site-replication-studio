@@ -57,7 +57,7 @@ const HomePage = ({ onMatchClick, matches = [], balance = 0, onPlaceBet }: HomeP
       </div>
 
       {/* Top Matches (existing) */}
-      <TopMatches onMatchClick={onMatchClick} />
+      <TopMatches onMatchClick={onMatchClick} balance={balance} onPlaceBet={onPlaceBet} />
 
       {/* Auto-Generated Live & Upcoming Matches */}
       {onPlaceBet && (
