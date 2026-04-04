@@ -1,4 +1,5 @@
-import { Lock } from "lucide-react";
+import { useState } from "react";
+import { Lock, X, Coins, TrendingUp, TrendingDown } from "lucide-react";
 
 interface Match {
   id: string;
@@ -60,22 +61,119 @@ const matches: Match[] = [
   },
 ];
 
-interface TopMatchesProps {
-  onMatchClick?: (matchId: string) => void;
+// For 6-odds layout: indices 0,2,4 = Back (teamA back, draw back, teamB back), 1,3,5 = Lay
+function getSelectionLabel(match: Match, oddIndex: number): string {
+  // 3-way (football): 0/1=teamA, 2/3=Draw, 4/5=teamB
+  // 2-way (cricket/tennis): 0/1=teamA, 2/3=locked, 4/5=teamB
+  if (oddIndex <= 1) return match.teamA;
+  if (oddIndex <= 3) return "Draw";
+  return match.teamB;
 }
 
-const TopMatches = ({ onMatchClick }: TopMatchesProps) => {
+interface SelectedOdd {
+  match: Match;
+  oddIndex: number;
+  oddValue: number;
+  type: "back" | "lay";
+  selection: string;
+}
+
+interface TopMatchesProps {
+  onMatchClick?: (matchId: string) => void;
+  balance?: number;
+  onPlaceBet?: (matchId: string, matchTitle: string, team: string, amount: number) => any;
+}
+
+const TopMatches = ({ onMatchClick, balance = 0, onPlaceBet }: TopMatchesProps) => {
+  const [betSlip, setBetSlip] = useState<SelectedOdd | null>(null);
+  const [stake, setStake] = useState(100);
+  const [betResult, setBetResult] = useState<{ won: boolean; profit: number; liability: number } | null>(null);
+
+  const handleOddClick = (e: React.MouseEvent, match: Match, oddIndex: number) => {
+    e.stopPropagation();
+    const odd = match.odds[oddIndex];
+    if (!odd.value) return;
+    const type = oddIndex % 2 === 0 ? "back" : "lay";
+    setBetSlip({
+      match,
+      oddIndex,
+      oddValue: parseFloat(odd.value),
+      type,
+      selection: getSelectionLabel(match, oddIndex),
+    });
+    setBetResult(null);
+    setStake(100);
+  };
+
+  // Real exchange calculation
+  const calcProfit = () => {
+    if (!betSlip) return { profit: 0, liability: 0 };
+    const { oddValue, type } = betSlip;
+    if (type === "back") {
+      // Back: Profit = stake * (odds - 1), Liability = stake
+      const profit = +(stake * (oddValue - 1)).toFixed(2);
+      return { profit, liability: stake };
+    } else {
+      // Lay: Liability = stake * (odds - 1), Profit = stake (if selection loses)
+      const liability = +(stake * (oddValue - 1)).toFixed(2);
+      return { profit: stake, liability };
+    }
+  };
+
+  const handlePlaceBet = () => {
+    if (!betSlip) return;
+    const { profit, liability } = calcProfit();
+    const requiredBalance = betSlip.type === "back" ? stake : liability;
+    if (requiredBalance > balance) return;
+
+    // Simulate: Back wins ~probability based on odds, Lay wins opposite
+    const impliedProbBack = 1 / betSlip.oddValue;
+    const random = Math.random();
+    let won: boolean;
+
+    if (betSlip.type === "back") {
+      won = random < impliedProbBack; // Higher odds = lower win chance
+    } else {
+      won = random >= impliedProbBack; // Lay wins when selection loses
+    }
+
+    // Use the wallet placeBet for actual deduction, but we override with our calculation
+    if (onPlaceBet) {
+      // We manually handle the transaction through the wallet system
+      const matchTitle = `${betSlip.match.teamA} vs ${betSlip.match.teamB}`;
+      if (won) {
+        onPlaceBet(betSlip.match.id, matchTitle, `${betSlip.type.toUpperCase()} ${betSlip.selection} @${betSlip.oddValue}`, requiredBalance);
+      } else {
+        onPlaceBet(betSlip.match.id, matchTitle, `${betSlip.type.toUpperCase()} ${betSlip.selection} @${betSlip.oddValue}`, requiredBalance);
+      }
+    }
+
+    setBetResult({ won, profit: won ? profit : 0, liability: won ? 0 : (betSlip.type === "back" ? stake : liability) });
+  };
+
+  const { profit, liability } = betSlip ? calcProfit() : { profit: 0, liability: 0 };
+
   return (
     <div className="px-3">
       <h2 className="text-sm font-bold text-foreground uppercase tracking-wide mb-1">Top Matches</h2>
-      <div className="w-8 h-0.5 bg-primary rounded mb-3" />
+      <div className="w-8 h-0.5 bg-primary rounded mb-2" />
+
+      {/* Column Headers */}
+      <div className="flex items-center justify-end gap-1 mb-1 pr-1">
+        <span className="text-[8px] text-blue-300 font-bold w-[44px] text-center">BACK</span>
+        <span className="text-[8px] text-pink-300 font-bold w-[44px] text-center">LAY</span>
+        <span className="text-[8px] text-blue-300 font-bold w-[44px] text-center">BACK</span>
+        <span className="text-[8px] text-pink-300 font-bold w-[44px] text-center">LAY</span>
+        <span className="text-[8px] text-blue-300 font-bold w-[44px] text-center">BACK</span>
+        <span className="text-[8px] text-pink-300 font-bold w-[44px] text-center">LAY</span>
+      </div>
 
       <div className="overflow-x-auto scrollbar-hide">
         <div className="flex gap-3 min-w-max">
           {matches.map((match) => (
             <div
               key={match.id}
-              className="bg-surface rounded-lg border border-border w-[300px] shrink-0 cursor-pointer hover:border-primary/50 transition-colors"
+              className="bg-surface rounded-lg border border-border w-[320px] shrink-0 cursor-pointer hover:border-primary/50 transition-colors"
               onClick={() => onMatchClick?.(match.id)}
             >
               <div className="flex items-center justify-between px-3 py-2">
@@ -103,13 +201,21 @@ const TopMatches = ({ onMatchClick }: TopMatchesProps) => {
                 </div>
                 <p className="text-[10px] text-muted-foreground">{match.date}</p>
               </div>
+
+              {/* Odds Row - Clickable Back/Lay */}
               <div className="flex gap-1 px-3 pb-3 pt-1">
                 {match.odds.map((odd, i) => (
-                  <div
+                  <button
                     key={i}
-                    className={`flex-1 flex flex-col items-center py-1.5 rounded text-[10px] ${
-                      odd.value ? (i % 2 === 0 ? "bg-blue-400/20 text-blue-300" : "bg-pink-400/20 text-pink-300") : "bg-muted/40 text-muted-foreground"
-                    }`}
+                    onClick={(e) => handleOddClick(e, match, i)}
+                    disabled={!odd.value}
+                    className={`flex-1 flex flex-col items-center py-1.5 rounded text-[10px] transition-all ${
+                      odd.value
+                        ? i % 2 === 0
+                          ? "bg-blue-400/20 text-blue-300 hover:bg-blue-400/40 active:scale-95"
+                          : "bg-pink-400/20 text-pink-300 hover:bg-pink-400/40 active:scale-95"
+                        : "bg-muted/40 text-muted-foreground cursor-not-allowed"
+                    } ${betSlip?.match.id === match.id && betSlip?.oddIndex === i ? "ring-2 ring-gold" : ""}`}
                   >
                     {odd.value ? (
                       <>
@@ -119,13 +225,124 @@ const TopMatches = ({ onMatchClick }: TopMatchesProps) => {
                     ) : (
                       <Lock size={10} />
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Bet Slip Panel */}
+      {betSlip && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 animate-in fade-in" onClick={() => setBetSlip(null)}>
+          <div className="w-full max-w-md bg-card border-t border-border rounded-t-2xl p-4 space-y-3 animate-in slide-in-from-bottom" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-foreground">Bet Slip</h3>
+              <button onClick={() => setBetSlip(null)}><X size={18} className="text-muted-foreground" /></button>
+            </div>
+
+            {/* Match Info */}
+            <div className="bg-surface rounded-lg p-3">
+              <p className="text-[10px] text-muted-foreground">{betSlip.match.sport} • {betSlip.match.league}</p>
+              <p className="text-xs font-bold text-foreground mt-0.5">{betSlip.match.teamA} vs {betSlip.match.teamB}</p>
+              <div className="flex items-center gap-2 mt-1.5">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${betSlip.type === "back" ? "bg-blue-400/20 text-blue-300" : "bg-pink-400/20 text-pink-300"}`}>
+                  {betSlip.type.toUpperCase()}
+                </span>
+                <span className="text-xs text-foreground font-medium">{betSlip.selection}</span>
+                <span className="text-xs text-gold font-bold">@{betSlip.oddValue}</span>
+              </div>
+            </div>
+
+            {!betResult ? (
+              <>
+                {/* Stake Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs text-muted-foreground">Stake</span>
+                    <span className="text-xs text-gold flex items-center gap-1"><Coins size={12} /> {balance}</span>
+                  </div>
+                  <input type="number" value={stake} onChange={(e) => setStake(Math.max(1, +e.target.value))}
+                    className="w-full bg-surface border border-border rounded-lg px-3 py-2.5 text-sm text-foreground font-bold focus:border-primary focus:outline-none"
+                    min={1} max={balance} />
+                  <div className="flex gap-2 mt-2">
+                    {[50, 100, 200, 500, 1000].map((a) => (
+                      <button key={a} onClick={() => setStake(a)}
+                        className={`flex-1 py-1.5 rounded text-[10px] font-bold border transition-all ${stake === a ? "bg-primary/20 text-primary border-primary/40" : "bg-surface text-muted-foreground border-border"}`}>
+                        {a}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Calculation Box */}
+                <div className="bg-surface rounded-lg border border-border p-3 space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Odds</span>
+                    <span className="text-foreground font-bold">{betSlip.oddValue}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Stake</span>
+                    <span className="text-foreground font-bold">{stake}</span>
+                  </div>
+                  {betSlip.type === "back" ? (
+                    <>
+                      <div className="flex justify-between text-xs border-t border-border/50 pt-2">
+                        <span className="text-muted-foreground">Profit if wins</span>
+                        <span className="text-success font-bold flex items-center gap-1"><TrendingUp size={12} /> +{profit}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Loss if loses</span>
+                        <span className="text-destructive font-bold flex items-center gap-1"><TrendingDown size={12} /> -{stake}</span>
+                      </div>
+                      <p className="text-[9px] text-muted-foreground">Back: You win {profit} if {betSlip.selection} wins. You lose {stake} if they don't.</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-xs border-t border-border/50 pt-2">
+                        <span className="text-muted-foreground">Profit if selection loses</span>
+                        <span className="text-success font-bold flex items-center gap-1"><TrendingUp size={12} /> +{profit}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Liability if selection wins</span>
+                        <span className="text-destructive font-bold flex items-center gap-1"><TrendingDown size={12} /> -{liability}</span>
+                      </div>
+                      <p className="text-[9px] text-muted-foreground">Lay: You win {profit} if {betSlip.selection} loses. Your liability is {liability}.</p>
+                    </>
+                  )}
+                </div>
+
+                {/* Place Bet Button */}
+                <button onClick={handlePlaceBet}
+                  disabled={(betSlip.type === "back" ? stake : liability) > balance}
+                  className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50 transition-all hover:opacity-90">
+                  {(betSlip.type === "back" ? stake : liability) > balance
+                    ? "Insufficient Balance"
+                    : `Place ${betSlip.type === "back" ? "Back" : "Lay"} Bet (${betSlip.type === "back" ? stake : liability} coins)`}
+                </button>
+              </>
+            ) : (
+              <div className="text-center py-4 space-y-3">
+                <div className={`text-4xl ${betResult.won ? "animate-bounce" : ""}`}>
+                  {betResult.won ? "🎉" : "😔"}
+                </div>
+                <p className={`text-lg font-bold ${betResult.won ? "text-success" : "text-destructive"}`}>
+                  {betResult.won ? "BET WON!" : "BET LOST!"}
+                </p>
+                {betResult.won ? (
+                  <p className="text-gold font-bold text-xl">+{betResult.profit} coins</p>
+                ) : (
+                  <p className="text-muted-foreground text-sm">-{betResult.liability} coins</p>
+                )}
+                <button onClick={() => setBetSlip(null)} className="px-6 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-bold">
+                  Close
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
