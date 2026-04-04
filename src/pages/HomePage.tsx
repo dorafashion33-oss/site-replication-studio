@@ -1,12 +1,17 @@
 import heroBanner from "@/assets/hero-banner.jpg";
 import casinoBanner from "@/assets/casino-banner.jpg";
 import TopMatches from "@/components/TopMatches";
+import GeneratedMatches from "@/components/GeneratedMatches";
+import type { GeneratedMatch } from "@/hooks/useMatchGenerator";
 
 interface HomePageProps {
   onMatchClick?: (matchId: string) => void;
+  matches?: GeneratedMatch[];
+  balance?: number;
+  onPlaceBet?: (matchId: string, matchTitle: string, team: string, amount: number) => any;
 }
 
-const HomePage = ({ onMatchClick }: HomePageProps) => {
+const HomePage = ({ onMatchClick, matches = [], balance = 0, onPlaceBet }: HomePageProps) => {
   return (
     <div className="space-y-4 pb-4">
       {/* Deposit / Withdraw */}
@@ -51,8 +56,13 @@ const HomePage = ({ onMatchClick }: HomePageProps) => {
         </button>
       </div>
 
-      {/* Top Matches */}
+      {/* Top Matches (existing) */}
       <TopMatches onMatchClick={onMatchClick} />
+
+      {/* Auto-Generated Live & Upcoming Matches */}
+      {onPlaceBet && (
+        <GeneratedMatches matches={matches} balance={balance} onPlaceBet={onPlaceBet} />
+      )}
 
       {/* Cricket Battle Banner */}
       <div className="px-3">
