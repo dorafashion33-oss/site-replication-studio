@@ -1,8 +1,12 @@
-import { Menu, Info } from "lucide-react";
+import { Menu, Info, Coins } from "lucide-react";
 import { useState } from "react";
 import SideMenu from "./SideMenu";
 
-const Header = () => {
+interface HeaderProps {
+  balance?: number;
+}
+
+const Header = ({ balance = 0 }: HeaderProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -18,19 +22,17 @@ const Header = () => {
           </h1>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <div className="flex items-center gap-1 bg-success/20 text-success rounded-full px-2 py-1">
-            <span className="font-medium">D</span>
+          <div className="flex items-center gap-1 bg-gold/20 text-gold rounded-full px-2 py-1">
+            <Coins size={12} />
+            <span className="font-bold">{balance}</span>
           </div>
           <div className="text-right">
             <div className="flex items-center gap-1">
               <Info size={12} className="text-muted-foreground" />
-              <span className="text-muted-foreground">Bal:</span>
-              <span className="text-gold font-semibold">0.00</span>
-              <span className="text-primary font-semibold ml-1">Demo User</span>
+              <span className="text-primary font-semibold">Demo User</span>
             </div>
-            <div className="text-muted-foreground">
-              <span className="text-gold underline">Exp:0.00</span>
-              <span className="ml-1">Bonus: 0.00</span>
+            <div className="text-muted-foreground text-[10px]">
+              Virtual Coins Only
             </div>
           </div>
         </div>

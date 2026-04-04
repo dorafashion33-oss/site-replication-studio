@@ -1,6 +1,6 @@
-import { Trophy, Radio, Home, Disc3, User } from "lucide-react";
+import { Trophy, Radio, Home, Disc3, User, LayoutDashboard } from "lucide-react";
 
-export type TabId = "sportsbook" | "inplay" | "home" | "casino" | "preferences";
+export type TabId = "sportsbook" | "inplay" | "home" | "casino" | "preferences" | "dashboard";
 
 interface BottomNavProps {
   active: TabId;
@@ -8,11 +8,12 @@ interface BottomNavProps {
 }
 
 const tabs: { id: TabId; icon: typeof Home; label: string }[] = [
-  { id: "sportsbook", icon: Trophy, label: "Sportsbook" },
+  { id: "sportsbook", icon: Trophy, label: "Sports" },
   { id: "inplay", icon: Radio, label: "In-play" },
   { id: "home", icon: Home, label: "Home" },
   { id: "casino", icon: Disc3, label: "Casino" },
-  { id: "preferences", icon: User, label: "Preferences" },
+  { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { id: "preferences", icon: User, label: "Profile" },
 ];
 
 const BottomNav = ({ active, onChange }: BottomNavProps) => {
@@ -25,13 +26,13 @@ const BottomNav = ({ active, onChange }: BottomNavProps) => {
             <button
               key={tab.id}
               onClick={() => onChange(tab.id)}
-              className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-all text-xs ${
+              className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-lg transition-all text-[10px] ${
                 isActive
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <tab.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
+              <tab.icon size={18} strokeWidth={isActive ? 2.5 : 1.5} />
               <span className={isActive ? "font-semibold" : "font-normal"}>{tab.label}</span>
             </button>
           );

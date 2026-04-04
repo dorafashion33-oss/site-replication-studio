@@ -7,10 +7,15 @@ import InPlayPage from "./InPlayPage";
 import CasinoPage from "./CasinoPage";
 import PreferencesPage from "./PreferencesPage";
 import MatchDetailPage from "./MatchDetailPage";
+import DashboardPage from "./DashboardPage";
+import { useWallet } from "@/hooks/useWallet";
+import { useMatchGenerator } from "@/hooks/useMatchGenerator";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>("home");
   const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
+  const wallet = useWallet();
+  const matches = useMatchGenerator(12);
 
   const handleMatchClick = (matchId: string) => {
     setSelectedMatch(matchId);
@@ -33,21 +38,23 @@ const Index = () => {
 
     switch (activeTab) {
       case "home":
-        return <HomePage onMatchClick={handleMatchClick} />;
+        return <HomePage onMatchClick={handleMatchClick} matches={matches} balance={wallet.balance} onPlaceBet={wallet.placeBet} />;
       case "sportsbook":
         return <SportsPage onMatchClick={handleMatchClick} />;
       case "inplay":
         return <InPlayPage onMatchClick={handleMatchClick} />;
       case "casino":
-        return <CasinoPage />;
+        return <CasinoPage balance={wallet.balance} onTransaction={wallet.casinoTransaction} />;
       case "preferences":
-        return <PreferencesPage />;
+        return <PreferencesPage wallet={wallet} />;
+      case "dashboard" as any:
+        return <DashboardPage wallet={wallet} matches={matches} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header balance={wallet.balance} />
       <main className="pt-14 pb-16">
         {renderPage()}
       </main>

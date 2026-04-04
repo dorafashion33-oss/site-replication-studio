@@ -1,25 +1,31 @@
-import { FileText, BarChart3, Settings, LogOut, TrendingUp } from "lucide-react";
+import { FileText, BarChart3, Settings, LogOut, TrendingUp, Coins } from "lucide-react";
+import WalletPanel from "@/components/WalletPanel";
 
-const PreferencesPage = () => {
+interface PreferencesPageProps {
+  wallet?: {
+    balance: number;
+    transactions: any[];
+    totalBets: number;
+    wins: number;
+    losses: number;
+    addCoins: (n: number) => void;
+  };
+}
+
+const PreferencesPage = ({ wallet }: PreferencesPageProps) => {
   return (
     <div className="px-3 pb-4 space-y-4">
-      {/* Balance Card */}
-      <div className="bg-primary rounded-lg p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-primary-foreground">Available Balance</span>
-          <span className="text-lg font-bold text-primary-foreground">-:--</span>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="bg-primary rounded-lg p-4 text-center">
-          <span className="text-sm font-semibold text-primary-foreground">Exposure Credited</span>
-        </div>
-        <div className="bg-primary rounded-lg p-4 text-center">
-          <span className="text-sm font-semibold text-primary-foreground">Bonus Rewarded</span>
-        </div>
-      </div>
+      {/* Wallet */}
+      {wallet && (
+        <WalletPanel
+          balance={wallet.balance}
+          transactions={wallet.transactions}
+          totalBets={wallet.totalBets}
+          wins={wallet.wins}
+          losses={wallet.losses}
+          onAddCoins={wallet.addCoins}
+        />
+      )}
 
       {/* Reports Menu */}
       <div>
