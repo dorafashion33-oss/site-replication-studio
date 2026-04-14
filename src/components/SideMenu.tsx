@@ -1,23 +1,39 @@
-import { X, Home, PlayCircle, FileText, Star, Search, Globe, ShieldCheck, LogOut } from "lucide-react";
+import { X, Home, PlayCircle, FileText, Star, Search, Globe, ShieldCheck, LogOut, LogIn, UserPlus, BarChart3 } from "lucide-react";
+
+export type MenuPage = "mybets" | "results" | "favourites" | "search" | "language" | "terms" | "login" | "signup" | null;
 
 interface SideMenuProps {
   open: boolean;
   onClose: () => void;
+  onNavigate: (page: MenuPage) => void;
+  onTabChange?: (tab: string) => void;
 }
 
-const menuItems = [
-  { icon: Home, label: "Home" },
-  { icon: PlayCircle, label: "Inplay", badge: "LIVE" },
-  { icon: FileText, label: "My Bets" },
-  { icon: FileText, label: "Results" },
-  { icon: Star, label: "Favourites" },
-  { icon: Search, label: "Search" },
-  { icon: Globe, label: "Language : EN" },
-  { icon: ShieldCheck, label: "Terms & Policy" },
+const menuItems: { icon: typeof Home; label: string; page?: MenuPage; tab?: string; badge?: string }[] = [
+  { icon: Home, label: "Home", tab: "home" },
+  { icon: PlayCircle, label: "Inplay", tab: "inplay", badge: "LIVE" },
+  { icon: FileText, label: "My Bets", page: "mybets" },
+  { icon: BarChart3, label: "Results", page: "results" },
+  { icon: Star, label: "Favourites", page: "favourites" },
+  { icon: Search, label: "Search", page: "search" },
+  { icon: Globe, label: "Language : EN", page: "language" },
+  { icon: ShieldCheck, label: "Terms & Policy", page: "terms" },
 ];
 
-const SideMenu = ({ open, onClose }: SideMenuProps) => {
+const SideMenu = ({ open, onClose, onNavigate, onTabChange }: SideMenuProps) => {
   if (!open) return null;
+
+  const handleClick = (item: typeof menuItems[0]) => {
+    if (item.tab && onTabChange) {
+      onTabChange(item.tab);
+      onClose();
+    } else if (item.page) {
+      onNavigate(item.page);
+      onClose();
+    } else {
+      onClose();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[60]">
@@ -29,12 +45,25 @@ const SideMenu = ({ open, onClose }: SideMenuProps) => {
             <X size={20} />
           </button>
         </div>
+
+        {/* Login/Signup buttons */}
+        <div className="flex gap-2 p-3 border-b border-border">
+          <button onClick={() => { onNavigate("login"); onClose(); }}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg text-xs font-bold">
+            <LogIn size={14} /> Login
+          </button>
+          <button onClick={() => { onNavigate("signup"); onClose(); }}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-surface text-foreground border border-border rounded-lg text-xs font-bold">
+            <UserPlus size={14} /> Sign Up
+          </button>
+        </div>
+
         <nav className="flex-1 overflow-y-auto py-2">
           {menuItems.map((item) => (
             <button
               key={item.label}
               className="flex items-center gap-3 w-full px-4 py-3 text-sm text-foreground hover:bg-surface-hover transition-colors"
-              onClick={onClose}
+              onClick={() => handleClick(item)}
             >
               <item.icon size={18} className="text-primary" />
               <span>{item.label}</span>
