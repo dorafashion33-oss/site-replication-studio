@@ -1,12 +1,14 @@
 import { Menu, Info, Coins } from "lucide-react";
 import { useState } from "react";
-import SideMenu from "./SideMenu";
+import SideMenu, { type MenuPage } from "./SideMenu";
 
 interface HeaderProps {
   balance?: number;
+  onMenuNavigate?: (page: MenuPage) => void;
+  onTabChange?: (tab: string) => void;
 }
 
-const Header = ({ balance = 0 }: HeaderProps) => {
+const Header = ({ balance = 0, onMenuNavigate, onTabChange }: HeaderProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -37,7 +39,12 @@ const Header = ({ balance = 0 }: HeaderProps) => {
           </div>
         </div>
       </header>
-      <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <SideMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onNavigate={(page) => onMenuNavigate?.(page)}
+        onTabChange={onTabChange}
+      />
     </>
   );
 };

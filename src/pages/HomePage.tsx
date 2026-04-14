@@ -14,26 +14,13 @@ interface HomePageProps {
 const HomePage = ({ onMatchClick, matches = [], balance = 0, onPlaceBet }: HomePageProps) => {
   return (
     <div className="space-y-4 pb-4">
-      {/* Deposit / Withdraw */}
-      <div className="flex gap-2 px-3">
-        <button className="flex-1 py-2.5 rounded-lg bg-success text-success-foreground font-bold text-sm flex items-center justify-center gap-2">
-          💰 DEPOSIT
-        </button>
-        <button className="flex-1 py-2.5 rounded-lg bg-warning text-warning-foreground font-bold text-sm flex items-center justify-center gap-2">
-          💸 WITHDRAW
-        </button>
-      </div>
-
       {/* Banners */}
-      <div className="grid grid-cols-2 gap-2 px-3">
+      <div className="grid grid-cols-2 gap-2 px-3 mt-2">
         <div className="relative rounded-lg overflow-hidden">
           <img src={heroBanner} alt="Sports Bonus" className="w-full h-32 object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent flex flex-col justify-end p-2">
             <p className="text-[10px] text-foreground">Get <span className="text-gold font-bold">500%</span></p>
             <p className="text-xs text-foreground font-bold">Joining Bonus</p>
-            <button className="mt-1 bg-foreground text-background text-[10px] px-3 py-1 rounded font-semibold self-start">
-              Deposit Now
-            </button>
           </div>
         </div>
         <div className="relative rounded-lg overflow-hidden">
@@ -41,19 +28,8 @@ const HomePage = ({ onMatchClick, matches = [], balance = 0, onPlaceBet }: HomeP
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent flex flex-col justify-end p-2">
             <p className="text-xs text-foreground font-bold">Join Our Affiliate</p>
             <p className="text-[10px] text-primary">& Earn daily commission</p>
-            <button className="mt-1 bg-foreground text-background text-[10px] px-3 py-1 rounded font-semibold self-start">
-              Join Now
-            </button>
           </div>
         </div>
-      </div>
-
-      {/* Bonus Banner */}
-      <div className="mx-3 bg-surface border border-border rounded-lg flex items-center justify-between px-4 py-3">
-        <span className="text-sm text-foreground">Check your Bonuses 💰🤩</span>
-        <button className="bg-gold text-warning-foreground text-xs font-bold px-4 py-1.5 rounded">
-          Claim Now
-        </button>
       </div>
 
       {/* Top Matches (existing) */}
@@ -74,22 +50,6 @@ const HomePage = ({ onMatchClick, matches = [], balance = 0, onPlaceBet }: HomeP
             <span className="text-2xl font-black text-foreground drop-shadow-lg tracking-wider">CRICKET BATTLE</span>
           </div>
         </div>
-      </div>
-
-      {/* Mini Games Floating */}
-      <div className="fixed bottom-20 left-3 z-40">
-        <div className="w-14 h-14 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
-          <span className="text-2xl">🎲</span>
-        </div>
-        <span className="text-[8px] text-primary font-bold text-center block mt-0.5">MINI GAMES</span>
-      </div>
-
-      {/* Customer Support Floating */}
-      <div className="fixed bottom-20 right-3 z-40">
-        <div className="w-14 h-14 rounded-full bg-success/20 border-2 border-success flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
-          <span className="text-lg">📞</span>
-        </div>
-        <span className="text-[8px] text-success font-bold text-center block mt-0.5">24/7</span>
       </div>
     </div>
   );
