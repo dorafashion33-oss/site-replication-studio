@@ -1,12 +1,15 @@
 import WalletPanel from "@/components/WalletPanel";
 import Leaderboard from "@/components/Leaderboard";
 import GeneratedMatches from "@/components/GeneratedMatches";
+import BetHistory from "@/components/BetHistory";
 import type { GeneratedMatch } from "@/hooks/useMatchGenerator";
+import type { BetRecord } from "@/hooks/useWallet";
 
 interface DashboardPageProps {
   wallet: {
     balance: number;
     transactions: any[];
+    bets: BetRecord[];
     totalBets: number;
     wins: number;
     losses: number;
@@ -27,6 +30,7 @@ const DashboardPage = ({ wallet, matches }: DashboardPageProps) => {
         losses={wallet.losses}
         onAddCoins={wallet.addCoins}
       />
+      <BetHistory bets={wallet.bets} />
       <GeneratedMatches matches={matches} balance={wallet.balance} onPlaceBet={wallet.placeBet} />
       <Leaderboard userBalance={wallet.balance} userWins={wallet.wins} />
     </div>
