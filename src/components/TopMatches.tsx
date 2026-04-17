@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Lock, X, Coins, TrendingUp, TrendingDown } from "lucide-react";
+import { useFluctuatingOdds } from "@/hooks/useFluctuatingOdds";
 
 interface Match {
   id: string;
@@ -61,10 +62,7 @@ const matches: Match[] = [
   },
 ];
 
-// For 6-odds layout: indices 0,2,4 = Back (teamA back, draw back, teamB back), 1,3,5 = Lay
 function getSelectionLabel(match: Match, oddIndex: number): string {
-  // 3-way (football): 0/1=teamA, 2/3=Draw, 4/5=teamB
-  // 2-way (cricket/tennis): 0/1=teamA, 2/3=locked, 4/5=teamB
   if (oddIndex <= 1) return match.teamA;
   if (oddIndex <= 3) return "Draw";
   return match.teamB;
@@ -89,15 +87,44 @@ const TopMatches = ({ onMatchClick, balance = 0, onPlaceBet }: TopMatchesProps) 
   const [stake, setStake] = useState(100);
   const [betResult, setBetResult] = useState<{ won: boolean; profit: number; liability: number } | null>(null);
 
+  // === Live odds fluctuation: build base map per match+oddIndex ===
+  const baseOdds = useMemo(() => {
+    const out: Record<string, { back: number; lay: number }> = {};
+    for (const m of matches) {
+      // we use odd cells in pairs (back, lay) — index 0/1, 2/3, 4/5
+      for (let i = 0; i < m.odds.length; i += 2) {
+        const back = m.odds[i]?.value;
+        const lay = m.odds[i + 1]?.value;
+        if (back && lay) {
+          out[`${m.id}-${i}`] = { back: parseFloat(back), lay: parseFloat(lay) };
+        }
+      }
+    }
+    return out;
+  }, []);
+  const fluctuated = useFluctuatingOdds(baseOdds, 3000);
+
+  const getOdd = (matchId: string, oddIndex: number, raw: string | null): { value: string; flash: "up" | "down" | "none" } | null => {
+    if (!raw) return null;
+    const pairKey = `${matchId}-${oddIndex - (oddIndex % 2)}`;
+    const cell = fluctuated[pairKey];
+    if (!cell) return { value: raw, flash: "none" };
+    const sub = oddIndex % 2 === 0 ? cell.back : cell.lay;
+    // For massive cricket dummy odds (1000), keep as integer
+    const num = parseFloat(raw);
+    const formatted = num >= 100 ? Math.round(sub.value).toString() : sub.value.toFixed(2);
+    return { value: formatted, flash: sub.flash };
+  };
+
   const handleOddClick = (e: React.MouseEvent, match: Match, oddIndex: number) => {
     e.stopPropagation();
-    const odd = match.odds[oddIndex];
-    if (!odd.value) return;
+    const live = getOdd(match.id, oddIndex, match.odds[oddIndex].value);
+    if (!live) return;
     const type = oddIndex % 2 === 0 ? "back" : "lay";
     setBetSlip({
       match,
       oddIndex,
-      oddValue: parseFloat(odd.value),
+      oddValue: parseFloat(live.value),
       type,
       selection: getSelectionLabel(match, oddIndex),
     });
@@ -105,16 +132,13 @@ const TopMatches = ({ onMatchClick, balance = 0, onPlaceBet }: TopMatchesProps) 
     setStake(100);
   };
 
-  // Real exchange calculation
   const calcProfit = () => {
     if (!betSlip) return { profit: 0, liability: 0 };
     const { oddValue, type } = betSlip;
     if (type === "back") {
-      // Back: Profit = stake * (odds - 1), Liability = stake
       const profit = +(stake * (oddValue - 1)).toFixed(2);
       return { profit, liability: stake };
     } else {
-      // Lay: Liability = stake * (odds - 1), Profit = stake (if selection loses)
       const liability = +(stake * (oddValue - 1)).toFixed(2);
       return { profit: stake, liability };
     }
@@ -126,26 +150,18 @@ const TopMatches = ({ onMatchClick, balance = 0, onPlaceBet }: TopMatchesProps) 
     const requiredBalance = betSlip.type === "back" ? stake : liability;
     if (requiredBalance > balance) return;
 
-    // Simulate: Back wins ~probability based on odds, Lay wins opposite
     const impliedProbBack = 1 / betSlip.oddValue;
     const random = Math.random();
     let won: boolean;
-
     if (betSlip.type === "back") {
-      won = random < impliedProbBack; // Higher odds = lower win chance
+      won = random < impliedProbBack;
     } else {
-      won = random >= impliedProbBack; // Lay wins when selection loses
+      won = random >= impliedProbBack;
     }
 
-    // Use the wallet placeBet for actual deduction, but we override with our calculation
     if (onPlaceBet) {
-      // We manually handle the transaction through the wallet system
       const matchTitle = `${betSlip.match.teamA} vs ${betSlip.match.teamB}`;
-      if (won) {
-        onPlaceBet(betSlip.match.id, matchTitle, `${betSlip.type.toUpperCase()} ${betSlip.selection} @${betSlip.oddValue}`, requiredBalance);
-      } else {
-        onPlaceBet(betSlip.match.id, matchTitle, `${betSlip.type.toUpperCase()} ${betSlip.selection} @${betSlip.oddValue}`, requiredBalance);
-      }
+      onPlaceBet(betSlip.match.id, matchTitle, `${betSlip.type.toUpperCase()} ${betSlip.selection} @${betSlip.oddValue}`, requiredBalance);
     }
 
     setBetResult({ won, profit: won ? profit : 0, liability: won ? 0 : (betSlip.type === "back" ? stake : liability) });
@@ -202,31 +218,42 @@ const TopMatches = ({ onMatchClick, balance = 0, onPlaceBet }: TopMatchesProps) 
                 <p className="text-[10px] text-muted-foreground">{match.date}</p>
               </div>
 
-              {/* Odds Row - Clickable Back/Lay */}
+              {/* Odds Row - Clickable Back/Lay with fluctuation */}
               <div className="flex gap-1 px-3 pb-3 pt-1">
-                {match.odds.map((odd, i) => (
-                  <button
-                    key={i}
-                    onClick={(e) => handleOddClick(e, match, i)}
-                    disabled={!odd.value}
-                    className={`flex-1 flex flex-col items-center py-1.5 rounded text-[10px] transition-all ${
-                      odd.value
-                        ? i % 2 === 0
-                          ? "bg-blue-400/20 text-blue-300 hover:bg-blue-400/40 active:scale-95"
-                          : "bg-pink-400/20 text-pink-300 hover:bg-pink-400/40 active:scale-95"
-                        : "bg-muted/40 text-muted-foreground cursor-not-allowed"
-                    } ${betSlip?.match.id === match.id && betSlip?.oddIndex === i ? "ring-2 ring-gold" : ""}`}
-                  >
-                    {odd.value ? (
-                      <>
-                        <span className="font-bold">{odd.value}</span>
-                        {odd.volume && <span className="text-[8px] opacity-70">{odd.volume}</span>}
-                      </>
-                    ) : (
-                      <Lock size={10} />
-                    )}
-                  </button>
-                ))}
+                {match.odds.map((odd, i) => {
+                  const live = getOdd(match.id, i, odd.value);
+                  return (
+                    <button
+                      key={i}
+                      onClick={(e) => handleOddClick(e, match, i)}
+                      disabled={!odd.value}
+                      className={`flex-1 flex flex-col items-center py-1.5 rounded text-[10px] transition-all ${
+                        odd.value
+                          ? live?.flash === "up"
+                            ? "bg-success/40 text-success ring-1 ring-success/60"
+                            : live?.flash === "down"
+                            ? "bg-destructive/40 text-destructive ring-1 ring-destructive/60"
+                            : i % 2 === 0
+                            ? "bg-blue-400/20 text-blue-300 hover:bg-blue-400/40 active:scale-95"
+                            : "bg-pink-400/20 text-pink-300 hover:bg-pink-400/40 active:scale-95"
+                          : "bg-muted/40 text-muted-foreground cursor-not-allowed"
+                      } ${betSlip?.match.id === match.id && betSlip?.oddIndex === i ? "ring-2 ring-gold" : ""}`}
+                    >
+                      {live ? (
+                        <>
+                          <span className="font-bold flex items-center gap-0.5">
+                            {live.value}
+                            {live.flash === "up" && <TrendingUp size={8} />}
+                            {live.flash === "down" && <TrendingDown size={8} />}
+                          </span>
+                          {odd.volume && <span className="text-[8px] opacity-70">{odd.volume}</span>}
+                        </>
+                      ) : (
+                        <Lock size={10} />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -242,7 +269,6 @@ const TopMatches = ({ onMatchClick, balance = 0, onPlaceBet }: TopMatchesProps) 
               <button onClick={() => setBetSlip(null)}><X size={18} className="text-muted-foreground" /></button>
             </div>
 
-            {/* Match Info */}
             <div className="bg-surface rounded-lg p-3">
               <p className="text-[10px] text-muted-foreground">{betSlip.match.sport} • {betSlip.match.league}</p>
               <p className="text-xs font-bold text-foreground mt-0.5">{betSlip.match.teamA} vs {betSlip.match.teamB}</p>
@@ -257,7 +283,6 @@ const TopMatches = ({ onMatchClick, balance = 0, onPlaceBet }: TopMatchesProps) 
 
             {!betResult ? (
               <>
-                {/* Stake Input */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs text-muted-foreground">Stake</span>
@@ -276,7 +301,6 @@ const TopMatches = ({ onMatchClick, balance = 0, onPlaceBet }: TopMatchesProps) 
                   </div>
                 </div>
 
-                {/* Calculation Box */}
                 <div className="bg-surface rounded-lg border border-border p-3 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Odds</span>
@@ -296,7 +320,6 @@ const TopMatches = ({ onMatchClick, balance = 0, onPlaceBet }: TopMatchesProps) 
                         <span className="text-muted-foreground">Loss if loses</span>
                         <span className="text-destructive font-bold flex items-center gap-1"><TrendingDown size={12} /> -{stake}</span>
                       </div>
-                      <p className="text-[9px] text-muted-foreground">Back: You win {profit} if {betSlip.selection} wins. You lose {stake} if they don't.</p>
                     </>
                   ) : (
                     <>
@@ -308,12 +331,10 @@ const TopMatches = ({ onMatchClick, balance = 0, onPlaceBet }: TopMatchesProps) 
                         <span className="text-muted-foreground">Liability if selection wins</span>
                         <span className="text-destructive font-bold flex items-center gap-1"><TrendingDown size={12} /> -{liability}</span>
                       </div>
-                      <p className="text-[9px] text-muted-foreground">Lay: You win {profit} if {betSlip.selection} loses. Your liability is {liability}.</p>
                     </>
                   )}
                 </div>
 
-                {/* Place Bet Button */}
                 <button onClick={handlePlaceBet}
                   disabled={(betSlip.type === "back" ? stake : liability) > balance}
                   className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-bold text-sm disabled:opacity-50 transition-all hover:opacity-90">
