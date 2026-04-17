@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { ArrowLeft, Lock, ChevronDown, ChevronUp, X, TrendingUp, TrendingDown } from "lucide-react";
+import { ArrowLeft, Lock, ChevronDown, ChevronUp, X, TrendingUp, TrendingDown, Radio, Wallet } from "lucide-react";
 import ExchangeBetSlip from "@/components/ExchangeBetSlip";
+import LiveStreamModal from "@/components/LiveStreamModal";
 import type { GeneratedMatch } from "@/hooks/useMatchGenerator";
 import type { BetRecord } from "@/hooks/useWallet";
 
@@ -24,8 +25,9 @@ interface MatchDetailProps {
   matchTime: string;
   onBack: () => void;
   balance?: number;
-  onPlaceBet?: (matchId: string, matchTitle: string, team: string, amount: number) => any;
+  onPlaceBet?: (matchId: string, matchTitle: string, team: string, amount: number, options?: { pending?: boolean }) => any;
   bets?: BetRecord[];
+  onCashout?: (predicate: (b: BetRecord) => boolean) => { count: number; credited: number };
 }
 
 // === Initial market data ===
