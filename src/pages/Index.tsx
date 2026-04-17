@@ -81,6 +81,7 @@ const Index = () => {
           onBack={handleBackFromMatch}
           balance={wallet.balance}
           onPlaceBet={wallet.placeBet}
+          bets={wallet.bets}
         />
       );
     }
