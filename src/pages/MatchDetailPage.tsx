@@ -474,16 +474,25 @@ const MatchDetailPage = ({ matchTitle, matchTime, onBack, balance = 0, onPlaceBe
               <div className="overflow-y-auto px-3 py-2 space-y-2">
                 {matchBets.map((bet) => {
                   const isBack = bet.team.startsWith("BACK");
+                  const isPending = bet.result === "pending";
+                  const isCashout = bet.result === "cashout";
                   const won = bet.result === "win";
+                  const pl = isPending ? 0 : isCashout ? bet.payout - bet.amount : won ? bet.payout - bet.amount : -bet.amount;
+                  const statusClass = isPending
+                    ? "bg-warning/20 text-warning animate-pulse"
+                    : isCashout
+                    ? "bg-primary/20 text-primary"
+                    : won
+                    ? "bg-success/20 text-success"
+                    : "bg-destructive/20 text-destructive";
+                  const plClass = pl > 0 ? "text-success" : pl < 0 ? "text-destructive" : "text-muted-foreground";
                   return (
                     <div key={bet.id} className="bg-surface rounded-lg p-3 border border-border/50">
                       <div className="flex items-center justify-between mb-1">
                         <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${isBack ? "bg-blue-500/20 text-blue-400" : "bg-pink-500/20 text-pink-400"}`}>
                           {isBack ? "BACK" : "LAY"}
                         </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                          won ? "bg-success/20 text-success" : bet.result === "loss" ? "bg-destructive/20 text-destructive" : "bg-muted text-muted-foreground"
-                        }`}>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${statusClass}`}>
                           {bet.result.toUpperCase()}
                         </span>
                       </div>
@@ -500,8 +509,8 @@ const MatchDetailPage = ({ matchTitle, matchTime, onBack, balance = 0, onPlaceBe
                         </div>
                         <div>
                           <p className="text-[9px] text-muted-foreground">P/L</p>
-                          <p className={`text-xs font-bold ${won ? "text-success" : "text-destructive"}`}>
-                            {won ? `+${bet.payout - bet.amount}` : `-${bet.amount}`}
+                          <p className={`text-xs font-bold ${plClass}`}>
+                            {pl > 0 ? `+${pl}` : pl < 0 ? pl : "—"}
                           </p>
                         </div>
                       </div>
@@ -515,7 +524,7 @@ const MatchDetailPage = ({ matchTitle, matchTime, onBack, balance = 0, onPlaceBe
         </div>
       )}
 
-      {/* Bet Slip */}
+      {/* Bet Slip — uses pending mode so the bet stays open and can be cashed out */}
       {betSlip && slipMatch && onPlaceBet && (
         <ExchangeBetSlip
           match={slipMatch}
@@ -524,8 +533,32 @@ const MatchDetailPage = ({ matchTitle, matchTime, onBack, balance = 0, onPlaceBe
           odds={betSlip.odds}
           balance={balance}
           onClose={() => setBetSlip(null)}
-          onPlaceBet={onPlaceBet}
+          onPlaceBet={(matchId, title, team, amount) => onPlaceBet(matchId, title, team, amount, { pending: true })}
         />
+      )}
+
+      {/* Live Stream Modal */}
+      {streamOpen && <LiveStreamModal matchTitle={matchTitle} sport="Cricket" onClose={() => setStreamOpen(false)} />}
+
+      {/* Cashout success confirmation */}
+      {cashoutResult && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 animate-fade-in p-4" onClick={() => setCashoutResult(null)}>
+          <div className="bg-card rounded-2xl border border-primary/40 p-6 max-w-sm w-full text-center animate-scale-in" onClick={(e) => e.stopPropagation()}>
+            <div className="text-5xl mb-2">💸</div>
+            <h3 className="text-lg font-bold text-foreground">Cashout Successful</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              {cashoutResult.count} bet{cashoutResult.count !== 1 ? "s" : ""} settled early
+            </p>
+            <p className="text-3xl font-black text-gold mt-3">+{cashoutResult.credited}</p>
+            <p className="text-[10px] text-muted-foreground">demo coins credited to wallet</p>
+            <button
+              onClick={() => setCashoutResult(null)}
+              className="mt-4 w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-bold"
+            >
+              Done
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

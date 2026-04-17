@@ -82,6 +82,7 @@ const Index = () => {
           balance={wallet.balance}
           onPlaceBet={wallet.placeBet}
           bets={wallet.bets}
+          onCashout={wallet.cashoutBets}
         />
       );
     }
