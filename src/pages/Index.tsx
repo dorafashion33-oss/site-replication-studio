@@ -79,6 +79,8 @@ const Index = () => {
           matchTitle="New Zealand W V South Africa W"
           matchTime="03:30 AM 04 Apr 2026"
           onBack={handleBackFromMatch}
+          balance={wallet.balance}
+          onPlaceBet={wallet.placeBet}
         />
       );
     }

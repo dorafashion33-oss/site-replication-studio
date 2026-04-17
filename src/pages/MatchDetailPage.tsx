@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { ArrowLeft, Lock, ChevronDown, ChevronUp } from "lucide-react";
+import ExchangeBetSlip from "@/components/ExchangeBetSlip";
+import type { GeneratedMatch } from "@/hooks/useMatchGenerator";
 
 interface MarketRow {
   team: string;
@@ -20,10 +22,18 @@ interface MatchDetailProps {
   matchTitle: string;
   matchTime: string;
   onBack: () => void;
+  balance?: number;
+  onPlaceBet?: (matchId: string, matchTitle: string, team: string, amount: number) => any;
 }
 
-const MatchDetailPage = ({ matchTitle, matchTime, onBack }: MatchDetailProps) => {
+const MatchDetailPage = ({ matchTitle, matchTime, onBack, balance = 0, onPlaceBet }: MatchDetailProps) => {
   const [liveScoreOpen, setLiveScoreOpen] = useState(false);
+  const [betSlip, setBetSlip] = useState<{
+    market: string;
+    team: string;
+    type: "back" | "lay";
+    odds: number;
+  } | null>(null);
 
   const markets: Market[] = [
     {
@@ -69,6 +79,30 @@ const MatchDetailPage = ({ matchTitle, matchTime, onBack }: MatchDetailProps) =>
       ],
     },
   ];
+
+  const handleOddsClick = (market: string, team: string, type: "back" | "lay", value: string) => {
+    if (!onPlaceBet) return;
+    const odds = parseFloat(value);
+    if (!odds || isNaN(odds)) return;
+    setBetSlip({ market, team, type, odds });
+  };
+
+  // Build a synthetic GeneratedMatch for the bet slip display
+  const slipMatch: GeneratedMatch | null = betSlip
+    ? ({
+        id: `detail-${matchTitle}-${betSlip.market}`,
+        sport: "Cricket",
+        sportIcon: "🏏",
+        league: matchTitle,
+        teamA: "New Zealand W",
+        teamB: "South Africa W",
+        time: matchTime,
+        isLive: true,
+        scoreA: "",
+        scoreB: "",
+        odds: { back: betSlip.odds, lay: betSlip.odds },
+      } as unknown as GeneratedMatch)
+    : null;
 
   return (
     <div className="pb-4">
@@ -144,20 +178,26 @@ const MatchDetailPage = ({ matchTitle, matchTime, onBack }: MatchDetailProps) =>
               <div key={idx} className="flex items-center bg-card border-x border-border px-3 py-2">
                 <span className="flex-1 text-xs text-foreground">{row.team}</span>
                 {row.back.value ? (
-                  <div className="w-16 mx-0.5 bg-blue-400/30 text-blue-300 rounded py-1 text-center">
+                  <button
+                    onClick={() => handleOddsClick(market.title, row.team, "back", row.back.value!)}
+                    className="w-16 mx-0.5 bg-blue-400/30 text-blue-300 rounded py-1 text-center hover:bg-blue-400/50 active:scale-95 transition"
+                  >
                     <span className="text-xs font-bold">{row.back.value}</span>
                     {row.back.volume && <p className="text-[8px] text-blue-400/70">{row.back.volume}</p>}
-                  </div>
+                  </button>
                 ) : (
                   <div className="w-16 mx-0.5 bg-muted/30 rounded py-2 flex items-center justify-center">
                     <Lock size={12} className="text-muted-foreground" />
                   </div>
                 )}
                 {row.lay.value ? (
-                  <div className="w-16 mx-0.5 bg-pink-400/30 text-pink-300 rounded py-1 text-center">
+                  <button
+                    onClick={() => handleOddsClick(market.title, row.team, "lay", row.lay.value!)}
+                    className="w-16 mx-0.5 bg-pink-400/30 text-pink-300 rounded py-1 text-center hover:bg-pink-400/50 active:scale-95 transition"
+                  >
                     <span className="text-xs font-bold">{row.lay.value}</span>
                     {row.lay.volume && <p className="text-[8px] text-pink-400/70">{row.lay.volume}</p>}
-                  </div>
+                  </button>
                 ) : (
                   <div className="w-16 mx-0.5 bg-muted/30 rounded py-2 flex items-center justify-center">
                     <Lock size={12} className="text-muted-foreground" />
@@ -178,6 +218,19 @@ const MatchDetailPage = ({ matchTitle, matchTime, onBack }: MatchDetailProps) =>
           </div>
         ))}
       </div>
+
+      {/* Bet Slip */}
+      {betSlip && slipMatch && onPlaceBet && (
+        <ExchangeBetSlip
+          match={slipMatch}
+          team={`${betSlip.team} (${betSlip.market})`}
+          type={betSlip.type}
+          odds={betSlip.odds}
+          balance={balance}
+          onClose={() => setBetSlip(null)}
+          onPlaceBet={onPlaceBet}
+        />
+      )}
     </div>
   );
 };
