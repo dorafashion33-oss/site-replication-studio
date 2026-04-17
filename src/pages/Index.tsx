@@ -17,7 +17,7 @@ import TermsPage from "./TermsPage";
 import LoginPage from "./LoginPage";
 import SignupPage from "./SignupPage";
 import { useWallet } from "@/hooks/useWallet";
-import { useMatchGenerator } from "@/hooks/useMatchGenerator";
+import { useRealMatches } from "@/hooks/useRealMatches";
 import type { MenuPage } from "@/components/SideMenu";
 
 const Index = () => {
@@ -25,7 +25,7 @@ const Index = () => {
   const [selectedMatch, setSelectedMatch] = useState<string | null>(null);
   const [menuPage, setMenuPage] = useState<MenuPage>(null);
   const wallet = useWallet();
-  const matches = useMatchGenerator(12);
+  const { matches, loading: matchesLoading, error: matchesError } = useRealMatches(60_000);
 
   const handleMatchClick = (matchId: string) => {
     setSelectedMatch(matchId);
@@ -88,7 +88,7 @@ const Index = () => {
 
     switch (activeTab) {
       case "home":
-        return <HomePage onMatchClick={handleMatchClick} matches={matches} balance={wallet.balance} onPlaceBet={wallet.placeBet} />;
+        return <HomePage onMatchClick={handleMatchClick} matches={matches} matchesLoading={matchesLoading} matchesError={matchesError} balance={wallet.balance} onPlaceBet={wallet.placeBet} />;
       case "sportsbook":
         return <SportsPage onMatchClick={handleMatchClick} />;
       case "inplay":

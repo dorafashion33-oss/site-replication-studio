@@ -1,3 +1,4 @@
+import { Loader2, AlertCircle } from "lucide-react";
 import heroBanner from "@/assets/hero-banner.jpg";
 import casinoBanner from "@/assets/casino-banner.jpg";
 import TopMatches from "@/components/TopMatches";
@@ -7,11 +8,13 @@ import type { GeneratedMatch } from "@/hooks/useMatchGenerator";
 interface HomePageProps {
   onMatchClick?: (matchId: string) => void;
   matches?: GeneratedMatch[];
+  matchesLoading?: boolean;
+  matchesError?: string | null;
   balance?: number;
   onPlaceBet?: (matchId: string, matchTitle: string, team: string, amount: number) => any;
 }
 
-const HomePage = ({ onMatchClick, matches = [], balance = 0, onPlaceBet }: HomePageProps) => {
+const HomePage = ({ onMatchClick, matches = [], matchesLoading = false, matchesError = null, balance = 0, onPlaceBet }: HomePageProps) => {
   return (
     <div className="space-y-4 pb-4">
       {/* Banners */}
@@ -32,12 +35,30 @@ const HomePage = ({ onMatchClick, matches = [], balance = 0, onPlaceBet }: HomeP
         </div>
       </div>
 
-      {/* Top Matches (existing) */}
+      {/* Top Matches (existing curated) */}
       <TopMatches onMatchClick={onMatchClick} balance={balance} onPlaceBet={onPlaceBet} />
 
-      {/* Auto-Generated Live & Upcoming Matches */}
+      {/* Real Live & Upcoming Matches (live ESPN data) */}
       {onPlaceBet && (
-        <GeneratedMatches matches={matches} balance={balance} onPlaceBet={onPlaceBet} />
+        <>
+          {matchesLoading && matches.length === 0 && (
+            <div className="px-3 py-6 flex items-center justify-center gap-2 text-muted-foreground">
+              <Loader2 size={16} className="animate-spin" />
+              <span className="text-xs">Loading real-time matches...</span>
+            </div>
+          )}
+          {!matchesLoading && matchesError && matches.length === 0 && (
+            <div className="px-3">
+              <div className="flex items-start gap-2 bg-destructive/10 border border-destructive/30 rounded-lg p-3">
+                <AlertCircle size={14} className="text-destructive shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">{matchesError}</p>
+              </div>
+            </div>
+          )}
+          {matches.length > 0 && (
+            <GeneratedMatches matches={matches} balance={balance} onPlaceBet={onPlaceBet} />
+          )}
+        </>
       )}
 
       {/* Cricket Battle Banner */}
