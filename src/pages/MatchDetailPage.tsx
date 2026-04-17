@@ -178,17 +178,27 @@ const MatchDetailPage = ({ matchTitle, matchTime, onBack, balance = 0, onPlaceBe
     return () => clearInterval(interval);
   }, []);
 
-  // === Open bets for THIS match ===
+  // === Open bets for THIS match (only PENDING ones we can cashout) ===
   const matchBets = useMemo(
-    () => bets.filter((b) => b.matchTitle.toLowerCase().includes("zealand") || b.matchTitle.toLowerCase().includes("africa") || b.matchTitle === matchTitle),
+    () => bets.filter((b) => b.matchTitle === matchTitle || b.matchTitle.toLowerCase().includes("zealand") || b.matchTitle.toLowerCase().includes("africa")),
     [bets, matchTitle]
   );
+  const pendingBets = useMemo(() => matchBets.filter((b) => b.result === "pending"), [matchBets]);
+  const totalPendingStake = useMemo(() => pendingBets.reduce((sum, b) => sum + b.amount, 0), [pendingBets]);
+  // Cashout offer: 85% of total stake (industry-standard early settlement)
+  const cashoutOffer = Math.round(totalPendingStake * 0.85);
 
   const handleOddsClick = (market: string, team: string, type: "back" | "lay", value: string) => {
     if (!onPlaceBet) return;
     const odds = parseFloat(value);
     if (!odds || isNaN(odds)) return;
     setBetSlip({ market, team, type, odds });
+  };
+
+  const handleCashout = () => {
+    if (!onCashout || pendingBets.length === 0) return;
+    const result = onCashout((b) => matchBets.some((mb) => mb.id === b.id));
+    setCashoutResult(result);
   };
 
   const slipMatch: GeneratedMatch | null = betSlip
@@ -229,7 +239,12 @@ const MatchDetailPage = ({ matchTitle, matchTime, onBack, balance = 0, onPlaceBe
         {/* Action Buttons */}
         <div className="flex gap-2 px-3 pb-3">
           <button className="px-4 py-2 bg-primary text-primary-foreground text-xs font-bold rounded-lg">SCORECARD</button>
-          <button className="px-4 py-2 bg-surface text-foreground text-xs font-bold rounded-lg border border-border">LIVE STREAM</button>
+          <button
+            onClick={() => setStreamOpen(true)}
+            className="px-4 py-2 bg-surface text-foreground text-xs font-bold rounded-lg border border-border hover:border-live transition-colors flex items-center gap-1.5"
+          >
+            <Radio size={12} className="text-live" /> LIVE STREAM
+          </button>
           <button
             onClick={() => setOpenBetsVisible(true)}
             className="px-4 py-2 bg-surface text-foreground text-xs font-bold rounded-lg border border-border hover:border-primary transition-colors"
@@ -339,7 +354,19 @@ const MatchDetailPage = ({ matchTitle, matchTime, onBack, balance = 0, onPlaceBe
 
             {/* Cashout / Loss Cut */}
             <div className="flex items-center justify-center gap-3 py-2 bg-card border-x border-border">
-              <span className="text-[10px] bg-primary/20 text-primary px-3 py-1 rounded">Cashout : ₹0.00</span>
+              <button
+                onClick={handleCashout}
+                disabled={pendingBets.length === 0}
+                className={`text-[10px] px-3 py-1 rounded transition-all flex items-center gap-1 ${
+                  pendingBets.length > 0
+                    ? "bg-primary/30 text-primary hover:bg-primary/50 cursor-pointer animate-pulse"
+                    : "bg-primary/10 text-primary/60 cursor-not-allowed"
+                }`}
+              >
+                <Wallet size={10} />
+                Cashout : ₹{cashoutOffer.toFixed(2)}
+                {pendingBets.length > 0 && <span className="text-[9px]">({pendingBets.length})</span>}
+              </button>
               <span className="text-[10px] bg-live/20 text-live px-3 py-1 rounded cursor-pointer">Loss Cut</span>
             </div>
 
