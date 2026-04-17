@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 
 export interface Transaction {
   id: string;
-  type: "bet" | "win" | "loss" | "add" | "casino-win" | "casino-loss";
+  type: "bet" | "win" | "loss" | "add" | "casino-win" | "casino-loss" | "cashout";
   amount: number;
   description: string;
   timestamp: number;
@@ -15,7 +15,7 @@ export interface BetRecord {
   team: string;
   amount: number;
   odds: number;
-  result: "win" | "loss" | "pending";
+  result: "win" | "loss" | "pending" | "cashout";
   payout: number;
   timestamp: number;
 }
@@ -70,11 +70,35 @@ export function useWallet() {
     }));
   }, []);
 
-  const placeBet = useCallback((matchId: string, matchTitle: string, team: string, amount: number): BetRecord | null => {
+  const placeBet = useCallback((matchId: string, matchTitle: string, team: string, amount: number, options?: { pending?: boolean }): BetRecord | null => {
     let result: BetRecord | null = null;
     setWallet((w) => {
       if (w.balance < amount) return w;
       const odds = +(1.5 + Math.random() * 1.5).toFixed(2);
+
+      // Pending mode: deduct stake but don't settle yet
+      if (options?.pending) {
+        const bet: BetRecord = {
+          id: crypto.randomUUID(),
+          matchId, matchTitle, team, amount, odds,
+          result: "pending",
+          payout: 0,
+          timestamp: Date.now(),
+        };
+        result = bet;
+        return {
+          ...w,
+          balance: w.balance - amount,
+          transactions: [
+            { id: crypto.randomUUID(), type: "bet", amount: -amount, description: `Pending bet on ${team}`, timestamp: Date.now() },
+            ...w.transactions,
+          ],
+          bets: [bet, ...w.bets],
+          totalBets: w.totalBets + 1,
+        };
+      }
+
+      // Instant settlement
       const isWin = Math.random() > 0.45;
       const payout = isWin ? Math.round(amount * odds) : 0;
       const bet: BetRecord = {
@@ -106,6 +130,43 @@ export function useWallet() {
     return result;
   }, []);
 
+  /**
+   * Cashout all pending bets matching a predicate (e.g. by matchId).
+   * Returns total amount credited back to wallet.
+   * Cashout pays approximately 85% of stake (industry-style early settlement).
+   */
+  const cashoutBets = useCallback((predicate: (b: BetRecord) => boolean, payoutPercent = 0.85): { count: number; credited: number } => {
+    let credited = 0;
+    let count = 0;
+    setWallet((w) => {
+      const txns: Transaction[] = [];
+      const updatedBets = w.bets.map((b) => {
+        if (b.result === "pending" && predicate(b)) {
+          const refund = Math.round(b.amount * payoutPercent);
+          credited += refund;
+          count += 1;
+          txns.push({
+            id: crypto.randomUUID(),
+            type: "cashout",
+            amount: refund,
+            description: `Cashout: ${b.team} (${Math.round(payoutPercent * 100)}%)`,
+            timestamp: Date.now(),
+          });
+          return { ...b, result: "cashout" as const, payout: refund };
+        }
+        return b;
+      });
+      if (count === 0) return w;
+      return {
+        ...w,
+        balance: w.balance + credited,
+        transactions: [...txns, ...w.transactions],
+        bets: updatedBets,
+      };
+    });
+    return { count, credited };
+  }, []);
+
   const casinoTransaction = useCallback((amount: number, type: "casino-win" | "casino-loss", description: string) => {
     setWallet((w) => ({
       ...w,
@@ -120,5 +181,5 @@ export function useWallet() {
     }));
   }, []);
 
-  return { ...wallet, addCoins, placeBet, casinoTransaction };
+  return { ...wallet, addCoins, placeBet, casinoTransaction, cashoutBets };
 }
