@@ -87,9 +87,11 @@ function fluctuate(value: string): { value: string; dir: "up" | "down" | "none" 
   return { value: formatted, dir };
 }
 
-const MatchDetailPage = ({ matchTitle, matchTime, onBack, balance = 0, onPlaceBet, bets = [] }: MatchDetailProps) => {
+const MatchDetailPage = ({ matchTitle, matchTime, onBack, balance = 0, onPlaceBet, bets = [], onCashout }: MatchDetailProps) => {
   const [liveScoreOpen, setLiveScoreOpen] = useState(true);
   const [openBetsVisible, setOpenBetsVisible] = useState(false);
+  const [streamOpen, setStreamOpen] = useState(false);
+  const [cashoutResult, setCashoutResult] = useState<{ count: number; credited: number } | null>(null);
   const [betSlip, setBetSlip] = useState<{
     market: string;
     team: string;
